@@ -1,5 +1,5 @@
 
-## Building CryptoNote 
+## Building CryptoMillenium
 
 ### On *nix
 
