@@ -2,13 +2,25 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#define VARIANT1_1(p) \
+  do if (variant > 0) \
+  { \
+    const uint8_t tmp = ((const uint8_t*)(p))[11]; \
+    static const uint32_t table = 0x75310; \
+    const uint8_t index = (((tmp >> 3) & 6) | (tmp & 1)) << 1; \
+    ((uint8_t*)(p))[11] = tmp ^ ((table >> index) & 0x30); \
+  } while(0)
+
+#define VARIANT1_INIT() \
+  const uint64_t tweak1_2 = variant > 0 ? *((const uint64_t*) (((const uint8_t*)data) + 35)) ^ ctx->state.hs.w[24] : 0
+
 static void
 #if defined(AESNI)
 cn_slow_hash_aesni
 #else
 cn_slow_hash_noaesni
 #endif
-(void *restrict context, const void *restrict data, size_t length, void *restrict hash)
+(void *restrict context, const void *restrict data, size_t length, void *restrict hash, int variant)
 {
 #define ctx ((struct cn_ctx *) context)
   ALIGNED_DECL(uint8_t ExpandedKey[256], 16);
@@ -18,6 +30,9 @@ cn_slow_hash_noaesni
   hash_process(&ctx->state.hs, (const uint8_t*) data, length);
 
   memcpy(ctx->text, ctx->state.init, INIT_SIZE_BYTE);
+
+  VARIANT1_INIT();
+
 #if defined(AESNI)
   memcpy(ExpandedKey, ctx->state.hs.b, AES_KEY_SIZE);
   ExpandAESKey256(ExpandedKey);
@@ -98,6 +113,8 @@ cn_slow_hash_noaesni
     b_x = _mm_xor_si128(b_x, c_x);
     _mm_store_si128((__m128i *)&ctx->long_state[a[0] & 0x1FFFF0], b_x);
 
+    VARIANT1_1(&ctx->long_state[a[0] & 0x1FFFF0]);
+
     nextblock = (uint64_t *)&ctx->long_state[c[0] & 0x1FFFF0];
     b[0] = nextblock[0];
     b[1] = nextblock[1];
@@ -122,7 +139,7 @@ cn_slow_hash_noaesni
     }
     dst = (uint64_t *) &ctx->long_state[c[0] & 0x1FFFF0];
     dst[0] = a[0];
-    dst[1] = a[1];
+    dst[1] = variant > 0 ? a[1] ^ tweak1_2 : a[1];
 
     a[0] ^= b[0];
     a[1] ^= b[1];

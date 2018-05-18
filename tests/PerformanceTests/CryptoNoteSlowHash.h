@@ -35,7 +35,7 @@ public:
 
   bool test() {
     Crypto::Hash hash;
-    Crypto::cn_slow_hash(m_context, &m_data, sizeof(m_data), hash);
+    Crypto::cn_slow_hash(m_context, &m_data, sizeof(m_data), hash, 0);
     return hash == m_expected_hash;
   }
 
