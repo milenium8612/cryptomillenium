@@ -469,8 +469,8 @@ bool get_block_longhash(cn_context &context, const Block& b, Hash& res) {
   if (!get_block_hashing_blob(b, bd)) {
     return false;
   }
-
-  cn_slow_hash(context, bd.data(), bd.size(), res);
+  const int cn_variant = b.major_version >= 1 ? b.major_version : 0;
+  cn_slow_hash(context, bd.data(), bd.size(), res, cn_variant);
   return true;
 }
 
